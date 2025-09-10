@@ -1,9 +1,98 @@
 <html>
-    <head>
-        <title>WebAR at ShibaLab 2025 Atami</title>
-    </head>
-    <body>
-        <h1>WebAR at ShibaLab 2025 Atami</h1>
-        <p>Hirano</p>
-    </body>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    
+    <script>
+      AFRAME.registerComponent("falling-petals",{
+        init: function(){
+          const count = 30;
+          const geometry = new THREE.PlaneGeometry(0.3,0.3,1,1);
+          const positions = geometry.attributes.position;
+
+          const texture = new THREE.TextureLoader().load("sakura.png");
+
+          const material = new THREE.MeshBasicMaterial({
+            map:texture,
+            transparent: true,
+            side: THREE.DoubleSide
+          });
+
+          this.mesh = new THREE.InstancedMesh(geometry, material, count);
+          this.dummy = new THREE.Object3D();
+          this.velocities = [];
+
+          for(let i = 0; i < count; i++){
+            this.dummy.position.set(
+              (Math.random()-0.5)*2,
+              Math.random()*2,
+              (Math.random()-0.5)*2            
+            )
+
+            this.dummy.rotation.set(
+              Math.random() * Math.PI,
+              Math.random() * Math.PI,
+              Math.random() * Math.PI
+            );
+
+            this.dummy.updateMatrix();
+            this.mesh.setMatrixAt(i, this.dummy.matrix);
+
+            this.velocities.push(
+              new THREE.Vector3(
+                (Math.random() - 0.5) * 0.004, // 左右に揺れる
+                -0.002 - Math.random() * 0.03, // 下方向
+                (Math.random() - 0.5) * 0.004  // 奥行き揺れ
+              )
+            );
+          }
+
+          this.el.object3D.add(this.mesh);
+        },
+
+        tick: function(time, delta){
+          const dummy = this.dummy;
+
+          for(let i = 0; i < this.velocities.length; i++){
+            this.mesh.getMatrixAt(i, dummy.matrix);
+            dummy.position.setFromMatrixPosition(dummy.matrix);
+            dummy.rotation.setFromRotationMatrix(dummy.matrix);
+
+            dummy.position.add(this.velocities[i]);
+
+            dummy.rotation.x += 0.01;
+            dummy.rotation.z += 0.005;
+
+            // 下に落ちすぎたら上に戻す
+            if (dummy.position.y < -1) {
+              dummy.position.y = 2;
+              dummy.position.x = (Math.random() - 0.5) * 2;
+              dummy.position.z = (Math.random() - 0.5) * 2;
+            }
+
+            dummy.updateMatrix();
+            this.mesh.setMatrixAt(i, dummy.matrix);
+
+          }
+          this.mesh.instanceMatrix.needsUpdate = true;
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <a-scene 
+        mindar-image="imageTargetSrc: https://nightlife-includes-ana-protective.trycloudflare.com/hirano/target_hirano.mind;" 
+        vr-mode-ui="enabled: false" 
+        device-orientation-permission-ui="enabled: false">
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0">
+
+        <!-- 花びらエフェクト -->
+        <a-entity falling-petals position="0 0 0"></a-entity>
+      </a-entity>
+    </a-scene>
+  </body>
 </html>
